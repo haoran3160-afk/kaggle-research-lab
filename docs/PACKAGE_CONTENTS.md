@@ -18,6 +18,7 @@ This release packages the complete active workflow. Its source is the private wo
 | Final selection, deadline and retrospective | `modules/closeout.md`, `assets/RETROSPECTIVE.md` |
 | Seven outcome-based effectiveness questions | `references/effectiveness.md` |
 | Lightweight state and readonly legacy record import | `scripts/workspace.py`, `references/workspace.md` |
+| Evaluation-channel resolution: hidden task count, run noise, paired tasks, expected gain | `scripts/resolution.py` |
 | Installation and behavioral checks | `scripts/install_skill.py`, `tests/` |
 | Seven selected upstream skills and supporting resources | `upstream/`, `references/adapters.md`, `THIRD_PARTY_NOTICES.md` |
 | Cross-competition lessons | `docs/LESSONS.md` |

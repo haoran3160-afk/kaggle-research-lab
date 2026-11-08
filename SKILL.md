@@ -7,7 +7,7 @@ description: Run result-driven Kaggle research using modular learning, open-solu
 
 以实际比赛表现和人的能力积累为目标。每轮最终要推进一个可执行、可比较的研究动作；模块完成、测试通过、PR合并和校验数量都不能代表提分。
 
-局部问题直接处理；开始/持续托管比赛时按以下模块工作。默认一个主赛、免费算力、私有GitHub、每周5小时并行学习。正式提交次数按比赛实时规则、实际余量和用户本场授权安排，不设统一每天一次上限。用户要求尽量用满每日可用次数时，有可行且有信息价值的尝试就主动安排；可用额度支持改善试验、诊断或必要的基线波动校准，不因尚未证优自动闲置。沿用用户授权，范围内自主推进。付费、公开发布、接受规则、改队伍须有相应授权。
+局部问题直接处理；开始/持续托管比赛时按以下模块工作。默认一个主赛、免费算力、私有GitHub、每周5小时并行学习。正式提交次数按比赛实时规则、实际余量和用户本场授权安排，不设统一上限；可用额度按[研究决策](modules/research.md)中的通道分辨率与期望收益分配，不因尚未证优闲置。沿用用户授权，范围内自主推进。付费、公开发布、接受规则、改队伍须有相应授权。
 
 ## 模块与交接
 
@@ -17,7 +17,7 @@ description: Run result-driven Kaggle research using modular learning, open-solu
 | [接题与学习](modules/learning.md) | 规则/目标/领域先修、经筛选资源、用户练习 | baseline与用户 |
 | [开源情报](modules/intelligence.md) | 按瓶颈找可复现方案，交具体机制/命令/成本 | baseline或research |
 | [基线](modules/baseline.md) | 真正能运行的训练/推理/比较入口、成绩和失败样本 | research与execution |
-| [研究决策](modules/research.md) | 失分诊断→专家分歧→最小区分实验→集成比较→采用/关闭 | execution或delivery |
+| [研究决策](modules/research.md) | 失分诊断→专家分歧→按通道分辨率分配实验→集成比较→采用/关闭 | execution或delivery |
 | [改进反馈](modules/progress.md) | 当前champion对照、暴露/回归分析、采用/回滚/换路线 | 下一轮研究与最终版本 |
 | [执行接续](modules/execution.md) | 实际运行、远端ID、完整结果、可恢复下一动作 | research |
 | [GitHub交付](modules/delivery.md) | 可恢复版本、PR、必要修复与合并 | 后续研究/最终提交 |
@@ -37,7 +37,7 @@ description: Run result-driven Kaggle research using modular learning, open-solu
 4. 接入最终consumer再比，证据支持才更新champion。若没有价值，换底座/表示/数据/模型或关闭路线，别无限微调。
 5. 每个新结果交改进反馈模块：对比当前champion，记录验证面暴露、净收益与回归，决定采用、补测、转向或等待，再保存下一命令。持续任务用宿主heartbeat接续，阶段或路线改变时同步更新原定时任务的执行说明，保留用户设置的周期和时刻，具体方法见执行接续模块；无人值守依靠真实工具和宿主运行，不靠一份文档自动执行。
 
-探索准入与champion采用分开。合法、可执行且成本有界的官方诊断提交可以在效能未证时进行，事前说明要解决的未知、成本和结果分支；提交不自动替换champion。按用户目标利用可用额度，保留最好版本，并用非作者反馈改进探针与采用判断。
+探索准入与champion采用分开：合法、成本有界的正式诊断可在效能未证时进行，事前说明在该通道分辨率下能排除什么；提交不自动替换champion，结果按噪声解读。
 
 以现有项目runner和状态记录为先；缺少接续记录时用[轻量工作记录](references/workspace.md)。不要求文件哈希、清单校验、独审证书或统一promotion评分器。保留有实际作用的记录：运行条件、原始结果、正常版本/远端ID、预算和下一动作。远端是否执行未知时先查对象，不能重复消耗额度。
 
