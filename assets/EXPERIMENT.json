@@ -1,0 +1,30 @@
+{
+  "kind": "experiment",
+  "identity": {
+    "question": "State the falsifiable question",
+    "method": "method-and-version",
+    "inputs": {
+      "data": "frozen-data-version",
+      "source_version": "exact-source"
+    },
+    "evaluation": {
+      "purpose": "mechanism_probe",
+      "panel": "exact-panel"
+    }
+  },
+  "resource": {
+    "device": "cpu",
+    "seconds": 600,
+    "multiplier": 1
+  },
+  "external": false,
+  "action": {
+    "cwd": "absolute-project-path",
+    "command": [],
+    "read_first": [],
+    "outputs": [],
+    "predicted_observation": "What distinguishes this mechanism from the control?",
+    "success": "Evidence that changes the next decision",
+    "stop": "Declared runtime or failure condition"
+  }
+}

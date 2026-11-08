@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.runtime/
+.venv/
+.env
+.env.*
+*.pem
+*.key
+kaggle.json
+access_token
+INSTALLATION.json
+dist/
+.DS_Store

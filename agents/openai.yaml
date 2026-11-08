@@ -1,0 +1,6 @@
+interface:
+  display_name: "Kaggle Research Lab"
+  short_description: "Persistent Kaggle research, learning and independent review"
+  default_prompt: "Use $kaggle-research-lab to start or continue my competition, inspect current evidence and autonomously execute the next useful bounded research step."
+policy:
+  allow_implicit_invocation: true
