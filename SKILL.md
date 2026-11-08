@@ -17,7 +17,7 @@ description: Run result-driven Kaggle research using modular learning, open-solu
 | [接题与学习](modules/learning.md) | 规则/目标/领域先修、经筛选资源、用户练习 | baseline与用户 |
 | [开源情报](modules/intelligence.md) | 按瓶颈找可复现方案，交具体机制/命令/成本 | baseline或research |
 | [基线](modules/baseline.md) | 真正能运行的训练/推理/比较入口、成绩和失败样本 | research与execution |
-| [研究决策](modules/research.md) | 失分诊断→专家分歧→按通道分辨率分配实验→集成比较→采用/关闭 | execution或delivery |
+| [研究决策](modules/research.md) | 失分诊断→专家分歧→最小区分实验（按通道分辨率分配）→集成比较→采用/关闭 | execution或delivery |
 | [改进反馈](modules/progress.md) | 当前champion对照、暴露/回归分析、采用/回滚/换路线 | 下一轮研究与最终版本 |
 | [执行接续](modules/execution.md) | 实际运行、远端ID、完整结果、可恢复下一动作 | research |
 | [GitHub交付](modules/delivery.md) | 可恢复版本、PR、必要修复与合并 | 后续研究/最终提交 |

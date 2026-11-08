@@ -3,11 +3,11 @@
 
 Standard library only. Every subcommand prints JSON so an agent can quote it.
 
-  lattice  infer the hidden task count K from public scores (round or floor)
+  lattice  task counts K consistent with public scores, under floor and round
   noise    single-run SD in tasks from repeated runs of one config
   compare  difference between two arms of repeated official scores
   paired   per-task wins/losses on the same tasks + exact sign test
-  next     rank candidates for a scarce high-resolution slot by expected gain
+  next     value of spending one noisy run on each candidate (knowledge gradient)
 """
 import argparse
 import json
@@ -29,10 +29,14 @@ def counts_for(score, k, mode="floor", dp=2):
     return [n for n in range(k + 1) if abs(_score(n, k, mode, dp) - score) < 1e-9]
 
 
-def lattice(scores, kmin, kmax, mode, dp):
-    ks = [k for k in range(kmin, kmax + 1) if all(counts_for(s, k, mode, dp) for s in scores)]
-    return {"mode": mode, "consistent_k": ks[:20], "smallest_k": ks[0] if ks else None,
-            "note": "smallest K that renders every score; more distinct scores narrow it"}
+def lattice(scores, kmin, kmax, dp):
+    out = {}
+    for mode in ("floor", "round"):
+        ks = [k for k in range(kmin, kmax + 1) if all(counts_for(s, k, mode, dp) for s in scores)]
+        out[mode] = {"smallest_k": ks[0] if ks else None, "consistent_k": ks[:12], "n_consistent": len(ks)}
+    out["note"] = ("scores alone do not identify K or the display mode; the smallest K is a guess "
+                   "unless another source (rules, task list, audit) fixes K or the mode")
+    return out
 
 
 def to_count(score, k, mode, dp):
@@ -43,6 +47,7 @@ def to_count(score, k, mode, dp):
 
 
 def noise(groups, k, mode, dp):
+    ambiguous = [s for g in groups for s in g if len(counts_for(s, k, mode, dp)) > 1]
     ss, dof, used = 0.0, 0, []
     for g in groups:
         n = [to_count(s, k, mode, dp) for s in g]
@@ -55,8 +60,11 @@ def noise(groups, k, mode, dp):
     all_n = [to_count(s, k, mode, dp) for g in groups for s in g]
     p = sum(all_n) / len(all_n) / k
     binom = math.sqrt(k * p * (1 - p))
-    out = {"k": k, "binomial_upper_sd_tasks": round(binom, 2),
-           "note": "binomial treats every task as a coin flip; it upper-bounds rerun noise on a fixed task set"}
+    out = {"k": k, "binomial_sd_tasks": round(binom, 2),
+           "note": ("pool only repeats of one unchanged config; binomial assumes independent tasks and is not "
+                    "a bound when timeouts or platform load move many tasks together")}
+    if ambiguous:
+        out["ambiguous_scores"] = ambiguous
     if dof:
         out.update(pooled_sd_tasks=round(math.sqrt(ss / dof), 2), dof=dof, repeats=used)
         if dof < 3:
@@ -78,10 +86,18 @@ def compare(a, b, k, sd, mode, dp):
     d = sum(nb) / len(nb) - sum(na) / len(na)
     se = sd * math.sqrt(1 / len(na) + 1 / len(nb))
     z = d / se if se else 0.0
-    return {"a_tasks": na, "b_tasks": nb, "diff_tasks_b_minus_a": round(d, 2), "se_tasks": round(se, 2),
-            "z": round(z, 2), "p_two_sided": round(2 * (1 - _cdf(abs(z))), 3),
-            "mde80_tasks": round(2.8 * se, 2),
-            "reading": "within noise" if abs(z) < 2 else "larger than run noise"}
+    out = {"a_tasks": na, "b_tasks": nb, "diff_tasks_b_minus_a": round(d, 2), "se_tasks": round(se, 2),
+           "z": round(z, 2), "p_two_sided_normal": round(2 * (1 - _cdf(abs(z))), 3),
+           "mde80_tasks": round(2.8 * se, 2),
+           "reading": "within 2 SE" if abs(z) < 2 else "beyond 2 SE"}
+    p = (sum(na) + sum(nb)) / (len(na) + len(nb)) / k
+    bsd = math.sqrt(k * p * (1 - p))
+    if bsd > sd:
+        bz = d / (bsd * math.sqrt(1 / len(na) + 1 / len(nb)))
+        out["reading_if_sd_is_binomial"] = "within 2 SE" if abs(bz) < 2 else "beyond 2 SE"
+        if out["reading_if_sd_is_binomial"] != out["reading"]:
+            out["warning"] = "conclusion depends on the noise estimate; get a repeat or a paired evaluation"
+    return out
 
 
 def _binom_two_sided(w, n):
@@ -92,11 +108,25 @@ def _binom_two_sided(w, n):
     return min(1.0, 2 * tail)
 
 
+def _outcome(v):
+    if isinstance(v, bool):
+        return v
+    if v in (0, 1):
+        return bool(v)
+    if isinstance(v, str) and v.strip().lower() in ("true", "false", "0", "1", "yes", "no"):
+        return v.strip().lower() in ("true", "1", "yes")
+    raise SystemExit(f"cannot read outcome {v!r} as solved/unsolved")
+
+
 def paired(rows, key, a, b, task, outcome):
     res = defaultdict(dict)
     for r in rows:
         if r.get(key) in (a, b):
-            res[r[task]][r[key]] = bool(r[outcome])
+            if r[key] in res[r[task]]:
+                raise SystemExit(f"duplicate row for {r[key]} on {r[task]}; aggregate repeats first")
+            res[r[task]][r[key]] = _outcome(r[outcome])
+    if not res:
+        raise SystemExit(f"no rows for {a} or {b} under key {key!r}")
     both = {t: v for t, v in res.items() if a in v and b in v}
     wins = sorted(t for t, v in both.items() if v[b] and not v[a])
     losses = sorted(t for t, v in both.items() if v[a] and not v[b])
@@ -107,27 +137,44 @@ def paired(rows, key, a, b, task, outcome):
             "unpaired_tasks": len(res) - len(both)}
 
 
+def _gain(delta, s):
+    if s <= 0:
+        return max(delta, 0.0)
+    z = delta / s
+    return delta * _cdf(z) + s * _phi(z)
+
+
 def nxt(cands, champion, sd):
+    """Knowledge-gradient style value of one noisy run against a fixed champion.
+
+    After one run with noise sd, the posterior mean moves with spread
+    s = tau^2 / sqrt(tau^2 + sd^2); a run is worth E[max(posterior mean - champion, 0)].
+    Unlike plain expected improvement, the value shrinks as run noise grows relative to the prior spread.
+    """
     out = []
     for c in cands:
         name, mu, tau = c.split(":")
         mu, tau = float(mu), float(tau)
-        z = (mu - champion) / tau if tau else math.copysign(9, mu - champion)
-        ei = (mu - champion) * _cdf(z) + tau * _phi(z)
-        obs = math.sqrt(tau ** 2 + sd ** 2)  # one run: prior spread plus run noise
-        visible = 1 - _cdf((champion + 2 * sd - mu) / obs)
+        if tau < 0 or sd < 0:
+            raise SystemExit("prior and run SD must be non-negative")
+        s = tau * tau / math.sqrt(tau * tau + sd * sd) if tau else 0.0
+        obs = math.sqrt(tau ** 2 + sd ** 2)
+        moves = (1 - _cdf((champion + 2 * sd - mu) / obs)) + _cdf((champion - 2 * sd - mu) / obs) if obs else 0.0
         out.append({"candidate": name, "prior_mean_tasks": mu, "prior_sd_tasks": tau,
-                    "p_better_than_champion": round(_cdf(z), 3), "expected_gain_tasks": round(ei, 2),
-                    "p_one_run_clears_2sd": round(visible, 3)})
-    out.sort(key=lambda x: -x["expected_gain_tasks"])
+                    "p_better_than_champion": round(_cdf((mu - champion) / tau), 3) if tau else float(mu > champion),
+                    "value_of_one_run_tasks": round(_gain(mu - champion, s), 2),
+                    "p_one_run_beyond_2sd_either_way": round(moves, 3)})
+    out.sort(key=lambda x: -x["value_of_one_run_tasks"])
     return {"champion_tasks": champion, "run_sd_tasks": sd, "ranked": out,
-            "note": "priors are your judgement from evidence; the ranking is only as good as they are"}
+            "note": ("priors are judgement: shrink external best-of-many scores, and justify a wide prior SD from the "
+                     "observed spread of comparable changes, or it will win by width alone. The value assumes "
+                     "the champion is fixed and the run happens today; readiness is not modelled")}
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--k", type=int, default=0, help="hidden task count (from lattice)")
-    p.add_argument("--mode", choices=["floor", "round"], default="floor", help="how the board shows scores")
+    p.add_argument("--mode", choices=["floor", "round"], help="how the board shows scores (required with --k)")
     p.add_argument("--dp", type=int, default=2, help="decimals shown on the board")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("lattice"); s.add_argument("scores", type=float, nargs="+")
@@ -145,9 +192,11 @@ def main(argv=None):
     s.add_argument("cands", nargs="+", help="name:prior_mean_tasks:prior_sd_tasks")
     a = p.parse_args(argv)
     if a.cmd in ("noise", "compare") and not a.k:
-        p.error("--k is required; get it from lattice")
+        p.error("--k is required; get it from lattice plus a non-score source")
+    if a.cmd in ("noise", "compare") and not a.mode:
+        p.error("--mode is required: scores alone cannot tell floor from round")
     if a.cmd == "lattice":
-        r = lattice(a.scores, a.kmin, a.kmax, a.mode, a.dp)
+        r = lattice(a.scores, a.kmin, a.kmax, a.dp)
     elif a.cmd == "noise":
         r = noise([[float(x) for x in g.split(",")] for g in a.group], a.k, a.mode, a.dp)
     elif a.cmd == "compare":
