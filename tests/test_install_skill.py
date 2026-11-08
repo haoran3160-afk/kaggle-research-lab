@@ -10,7 +10,7 @@ installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installe
 class InstallTests(unittest.TestCase):
     def make_source(self,root):
         src=root/"source"
-        for name in ("SKILL.md","agents/openai.yaml","references/adapters.md","references/workspace.md","references/effectiveness.md","references/system-research.md","VERSION","LICENSE","THIRD_PARTY_NOTICES.md","scripts/workspace.py","scripts/install_skill.py","modules/research.md"):
+        for name in ("SKILL.md","agents/openai.yaml","references/adapters.md","references/workspace.md","references/effectiveness.md","references/system-research.md","VERSION","LICENSE","THIRD_PARTY_NOTICES.md","scripts/workspace.py","scripts/resolution.py","scripts/install_skill.py","modules/research.md"):
             p=src/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text("content",encoding="utf-8")
         for name in ("learning", "intelligence", "baseline", "progress", "specs", "execution", "delivery", "closeout"):
             (src / "modules" / (name+".md")).write_text("module",encoding="utf-8")
@@ -25,6 +25,7 @@ class InstallTests(unittest.TestCase):
             self.assertNotEqual(Path(r["previous_copy"]).parent,dst.parent)
             self.assertFalse((dst/"INSTALL_MANIFEST.json").exists())
             self.assertTrue((dst/"scripts/workspace.py").exists())
+            self.assertTrue((dst/"scripts/resolution.py").exists())
             self.assertEqual((dst/"references/effectiveness.md").read_text(),"content")
             self.assertEqual((dst/"references/system-research.md").read_text(),"content")
     def test_missing_source_leaves_install_alone(self):
