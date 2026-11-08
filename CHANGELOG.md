@@ -1,9 +1,13 @@
 # Changelog
 
+## 1.1.1 — 2026-11-08
+
+- Review fixes: subtract existing expected advantage from information gain; reject zero-SD comparisons and ambiguous rounded counts; retain system-research and stage-aware continuation through real installation. No competition gain is claimed.
+
 ## 1.1.0 — 2026-11-08
 
 - When several candidates compete for scarce formal submissions, compare the value of one noisy run (knowledge-gradient style) instead of filling quota with sub-resolution single-factor diagnostics. Shrink external best-of-many scores, check which versions public per-task data covers, and when the strong candidate is not ready today submit the most informative ready one while packaging the strong one first.
-- Read results at their resolution: task counts, differences within about two standard errors are non-evidence, pool repeats, no selection by a single best public score; get a repeat or paired evaluation when the reading depends on the noise estimate.
+- Read results at their resolution: task counts, treat approximately two standard errors as a model-dependent sensitivity reference, not an adoption gate, pool repeats, no selection by a single best public score; get a repeat or paired evaluation when the reading depends on the noise estimate.
 - Intelligence uses leaderboard distribution, author/team links and public result datasets as first-hand evidence, and tries other authorized routes before marking a source unresolved.
 - Add `scripts/resolution.py` (standard library): `lattice` (floor and round, no single K claimed), `noise`, `compare`, `paired` (strict outcomes), `next`. Installed with the runtime.
 - Remove duplicated quota wording from SKILL and progress; the allocation rule lives once in `modules/research.md`.

@@ -43,11 +43,12 @@ def to_count(score, k, mode, dp):
     c = counts_for(score, k, mode, dp)
     if not c:
         raise SystemExit(f"score {score} is impossible for K={k} ({mode}); run lattice first")
-    return sum(c) / len(c)
+    if len(c) != 1:
+        raise SystemExit(f"score {score} maps to counts {c}; rounded scores cannot determine an exact count")
+    return float(c[0])
 
 
 def noise(groups, k, mode, dp):
-    ambiguous = [s for g in groups for s in g if len(counts_for(s, k, mode, dp)) > 1]
     ss, dof, used = 0.0, 0, []
     for g in groups:
         n = [to_count(s, k, mode, dp) for s in g]
@@ -61,10 +62,8 @@ def noise(groups, k, mode, dp):
     p = sum(all_n) / len(all_n) / k
     binom = math.sqrt(k * p * (1 - p))
     out = {"k": k, "binomial_sd_tasks": round(binom, 2),
-           "note": ("pool only repeats of one unchanged config; binomial assumes independent tasks and is not "
+           "note": ("each group must repeat an unchanged config under comparable conditions; pooling groups assumes common variance. Binomial assumes independent tasks and is not "
                     "a bound when timeouts or platform load move many tasks together")}
-    if ambiguous:
-        out["ambiguous_scores"] = ambiguous
     if dof:
         out.update(pooled_sd_tasks=round(math.sqrt(ss / dof), 2), dof=dof, repeats=used)
         if dof < 3:
@@ -81,6 +80,8 @@ def _cdf(z):
 
 
 def compare(a, b, k, sd, mode, dp):
+    if not math.isfinite(sd) or sd <= 0:
+        raise SystemExit("compare needs a positive finite run SD; identical repeats do not establish zero noise")
     na = [to_count(s, k, mode, dp) for s in a]
     nb = [to_count(s, k, mode, dp) for s in b]
     d = sum(nb) / len(nb) - sum(na) / len(na)
@@ -137,7 +138,8 @@ def paired(rows, key, a, b, task, outcome):
     return {"tasks_paired": len(both), "a_solved": sum(v[a] for v in both.values()),
             "b_solved": sum(v[b] for v in both.values()), "b_only": wins, "a_only": losses, "ties": ties,
             "sign_test_p": round(_binom_two_sided(len(wins), len(wins) + len(losses)), 3),
-            "unpaired_tasks": len(res) - len(both)}
+            "unpaired_tasks": len(res) - len(both),
+            "note": "sign test assumes independent paired tasks; unmatched tasks and selected/related tasks limit the interpretation"}
 
 
 def _gain(delta, s):
@@ -151,32 +153,36 @@ def nxt(cands, champion, sd):
     """Knowledge-gradient style value of one noisy run against a fixed champion.
 
     After one run with noise sd, the posterior mean moves with spread
-    s = tau^2 / sqrt(tau^2 + sd^2); a run is worth E[max(posterior mean - champion, 0)].
+    s = tau^2 / sqrt(tau^2 + sd^2). Incremental information value is
+    E[max(posterior mean - champion, 0)] - max(prior mean - champion, 0).
     Unlike plain expected improvement, the value shrinks as run noise grows relative to the prior spread.
     """
+    if not math.isfinite(champion) or not math.isfinite(sd) or sd < 0:
+        raise SystemExit("champion must be finite and run SD non-negative and finite")
     out = []
     for c in cands:
         name, mu, tau = c.split(":")
         mu, tau = float(mu), float(tau)
-        if tau < 0 or sd < 0:
-            raise SystemExit("prior and run SD must be non-negative")
+        if not math.isfinite(mu) or not math.isfinite(tau) or tau < 0:
+            raise SystemExit("prior mean must be finite and prior SD non-negative and finite")
         s = tau * tau / math.sqrt(tau * tau + sd * sd) if tau else 0.0
         obs = math.sqrt(tau ** 2 + sd ** 2)
         moves = (1 - _cdf((champion + 2 * sd - mu) / obs)) + _cdf((champion - 2 * sd - mu) / obs) if obs else 0.0
         out.append({"candidate": name, "prior_mean_tasks": mu, "prior_sd_tasks": tau,
                     "p_better_than_champion": round(_cdf((mu - champion) / tau), 3) if tau else float(mu > champion),
-                    "value_of_one_run_tasks": round(_gain(mu - champion, s), 2),
+                    "prior_mean_advantage_tasks": round(max(mu - champion, 0.0), 2),
+                    "value_of_one_run_tasks": round(max(0.0, _gain(mu - champion, s) - max(mu - champion, 0.0)), 2),
                     "p_one_run_beyond_2sd_either_way": round(moves, 3)})
     out.sort(key=lambda x: -x["value_of_one_run_tasks"])
     return {"champion_tasks": champion, "run_sd_tasks": sd, "ranked": out,
             "note": ("priors are judgement: shrink external best-of-many scores, and justify a wide prior SD from the "
                      "observed spread of comparable changes, or it will win by width alone. The value assumes "
-                     "the champion is fixed and the run happens today; readiness is not modelled")}
+                     "a fixed known champion and independent normal beliefs/noise. Each comparison is pairwise, not a joint multi-candidate KG policy. Champion uncertainty, readiness, costs and formal deployment value are not modelled; zero information value is not a submission veto")}
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--k", type=int, default=0, help="hidden task count (from lattice)")
+    p.add_argument("--k", type=int, default=0, help="equal-weight binary task count, established independently of score lattice")
     p.add_argument("--mode", choices=["floor", "round"], help="how the board shows scores (required with --k)")
     p.add_argument("--dp", type=int, default=2, help="decimals shown on the board")
     sub = p.add_subparsers(dest="cmd", required=True)
