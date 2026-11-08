@@ -30,13 +30,14 @@ class ResolutionTests(unittest.TestCase):
         self.assertGreater(out["floor"]["n_consistent"], 1)
         self.assertIn("do not identify", out["note"])
 
-    def test_noise_pools_repeats_and_flags_ambiguous_counts(self):
+    def test_noise_pools_repeats_and_rejects_ambiguous_counts(self):
         self.assertEqual(resolution.counts_for(0.20, 58), [12])
         out = resolution.noise([[0.17, 0.13], [0.20, 0.20]], 58, "floor", 2)
         self.assertEqual(out["repeats"], [[10.0, 8.0], [12.0, 12.0]])
         self.assertAlmostEqual(out["pooled_sd_tasks"], 1.0)
         self.assertIn("warning", out)
-        self.assertIn("ambiguous_scores", resolution.noise([[0.20, 0.20]], 250, "floor", 2))
+        with self.assertRaises(SystemExit):
+            resolution.noise([[0.20, 0.20]], 250, "floor", 2)
         with self.assertRaises(SystemExit):
             resolution.to_count(0.205, 58, "floor", 2)
 
@@ -64,7 +65,8 @@ class ResolutionTests(unittest.TestCase):
     def test_next_values_one_noisy_run(self):
         out = resolution.nxt(["v24:13.5:2", "F2:12:1", "K0:12:0"], 12, 2.0)
         ranked = {r["candidate"]: r for r in out["ranked"]}
-        self.assertEqual([r["candidate"] for r in out["ranked"]], ["v24", "F2", "K0"])
+        # Information gain can rank below a lower-mean candidate; deployment advantage is separate.
+        self.assertEqual([r["candidate"] for r in out["ranked"]], ["F2", "v24", "K0"])
         # A run is worth less when its noise is large relative to the prior spread.
         quiet = resolution.nxt(["wild:12:5"], 12, 1.0)["ranked"][0]["value_of_one_run_tasks"]
         noisy = resolution.nxt(["wild:12:5"], 12, 6.0)["ranked"][0]["value_of_one_run_tasks"]
@@ -75,6 +77,24 @@ class ResolutionTests(unittest.TestCase):
         self.assertAlmostEqual(ranked["F2"]["value_of_one_run_tasks"], round(0.4472136 * 0.3989423, 2))
         with self.assertRaises(SystemExit):
             resolution.nxt(["bad:12:-1"], 12, 1.0)
+
+    def test_one_run_value_does_not_reward_already_known_advantage(self):
+        rows = resolution.nxt(["known:15:0", "unknown:12:2"], 12, 2)["ranked"]
+        self.assertEqual(rows[0]["candidate"], "unknown")
+        known = next(row for row in rows if row["candidate"] == "known")
+        self.assertEqual(known["prior_mean_advantage_tasks"], 3.0)
+        self.assertEqual(known["value_of_one_run_tasks"], 0.0)
+        near = resolution.nxt(["above:13:2", "below:11:2"], 12, 2)["ranked"]
+        self.assertEqual(near[0]["value_of_one_run_tasks"], near[1]["value_of_one_run_tasks"])
+
+    def test_zero_noise_and_rounded_count_ambiguity_are_not_false_evidence(self):
+        for sd in (0, -1, float("nan")):
+            with self.assertRaises(SystemExit):
+                resolution.compare([0.20], [0.15], 58, sd, "floor", 2)
+        with self.assertRaises(SystemExit):
+            resolution.compare([0.20], [0.24], 250, 2, "floor", 2)
+        with self.assertRaises(SystemExit):
+            resolution.nxt(["invalid:nan:2"], 12, 2)
 
     def test_cli_requires_display_mode_and_reads_jsonl(self):
         with self.assertRaises(SystemExit):
