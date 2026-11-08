@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 — 2026-11-08
+
+- When several candidates compete for scarce formal submissions, compare the value of one noisy run (knowledge-gradient style) instead of filling quota with sub-resolution single-factor diagnostics. Shrink external best-of-many scores, check which versions public per-task data covers, and when the strong candidate is not ready today submit the most informative ready one while packaging the strong one first.
+- Read results at their resolution: task counts, differences within about two standard errors are non-evidence, pool repeats, no selection by a single best public score; get a repeat or paired evaluation when the reading depends on the noise estimate.
+- Intelligence uses leaderboard distribution, author/team links and public result datasets as first-hand evidence, and tries other authorized routes before marking a source unresolved.
+- Add `scripts/resolution.py` (standard library): `lattice` (floor and round, no single K claimed), `noise`, `compare`, `paired` (strict outcomes), `next`. Installed with the runtime.
+- Remove duplicated quota wording from SKILL and progress; the allocation rule lives once in `modules/research.md`.
+
+No competition score improvement is claimed; see the PR for the decision replay and its limits.
+
 ## 1.0.0 — 2026-11-08
 
 First public release as **Kaggle Research Lab**, extracted from the private Kaggle Research Loop workflow. This is a new public release line; it is not a score-based promotion.

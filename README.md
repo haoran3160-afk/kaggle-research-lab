@@ -57,7 +57,7 @@ Collect accepted jobs first, compare complete results with the champion,
 and investigate the largest recoverable loss before choosing the next experiment.
 ```
 
-The host performs research, runs tools, and makes evidence-based decisions. **The Python helper is a work record, not an autonomous model runner or scheduler.** Recurring execution requires the host's automation capability and an available machine. Installing this skill does not grant account actions or create an automation.
+The host performs research, runs tools, and makes evidence-based decisions. **The Python helpers are a work record (`workspace.py`) and a resolution calculator for scores and paired evaluations (`resolution.py`); neither is an autonomous model runner or scheduler.** Recurring execution requires the host's automation capability and an available machine. Installing this skill does not grant account actions or create an automation.
 
 ## The research loop
 
@@ -105,7 +105,7 @@ See [third-party notices](THIRD_PARTY_NOTICES.md) and [source attribution](upstr
 python -m unittest discover -s tests -v
 ```
 
-Tests verify the work-record and installation behavior. They do not measure competition performance. Contributions should identify a real failure or research opportunity, make a small useful change, and report observed outcomes and limitations. See [CONTRIBUTING](CONTRIBUTING.md) and [CHANGELOG](CHANGELOG.md).
+Tests verify the work-record, resolution-calculator and installation behavior. They do not measure competition performance. Contributions should identify a real failure or research opportunity, make a small useful change, and report observed outcomes and limitations. See [CONTRIBUTING](CONTRIBUTING.md) and [CHANGELOG](CHANGELOG.md).
 
 ## License
 

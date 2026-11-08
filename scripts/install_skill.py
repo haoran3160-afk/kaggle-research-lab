@@ -12,7 +12,7 @@ def install(source, destination):
         raise ValueError("Choose the skill source directory")
     if source == destination or source in destination.parents or destination in source.parents:
         raise ValueError("Source and destination must be separate directories")
-    names = ["SKILL.md", "agents/openai.yaml", "references/adapters.md", "references/workspace.md", "references/effectiveness.md", "references/system-research.md", "VERSION", "LICENSE", "THIRD_PARTY_NOTICES.md", "scripts/workspace.py", "scripts/install_skill.py"]
+    names = ["SKILL.md", "agents/openai.yaml", "references/adapters.md", "references/workspace.md", "references/effectiveness.md", "references/system-research.md", "VERSION", "LICENSE", "THIRD_PARTY_NOTICES.md", "scripts/workspace.py", "scripts/resolution.py", "scripts/install_skill.py"]
     names += ["modules/" + name + ".md" for name in ("specs", "learning", "intelligence", "baseline", "research", "progress", "execution", "delivery", "closeout")]
     names += [p.relative_to(source).as_posix() for p in (source / "assets").rglob("*") if p.is_file()]
     version = (source / "VERSION").read_text(encoding="utf-8").strip()
