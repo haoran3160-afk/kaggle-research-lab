@@ -125,9 +125,12 @@ def paired(rows, key, a, b, task, outcome):
             if r[key] in res[r[task]]:
                 raise SystemExit(f"duplicate row for {r[key]} on {r[task]}; aggregate repeats first")
             res[r[task]][r[key]] = _outcome(r[outcome])
-    if not res:
-        raise SystemExit(f"no rows for {a} or {b} under key {key!r}")
+    for arm in (a, b):
+        if not any(arm in v for v in res.values()):
+            raise SystemExit(f"no rows for {arm!r} under key {key!r}; check the arm name and which versions the data covers")
     both = {t: v for t, v in res.items() if a in v and b in v}
+    if not both:
+        raise SystemExit(f"{a!r} and {b!r} share no tasks; nothing to pair")
     wins = sorted(t for t, v in both.items() if v[b] and not v[a])
     losses = sorted(t for t, v in both.items() if v[a] and not v[b])
     ties = len(both) - len(wins) - len(losses)

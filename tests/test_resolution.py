@@ -55,7 +55,9 @@ class ResolutionTests(unittest.TestCase):
         self.assertEqual((out["tasks_paired"], out["b_only"], out["a_only"], out["ties"]), (4, ["w", "z"], [], 2))
         self.assertEqual(out["sign_test_p"], 0.5)
         self.assertEqual(out["unpaired_tasks"], 1)
-        for bad in (rows + [rows[0]], [{"run": "a", "task": "t", "resolved": None}], [{"run": "c", "task": "t", "resolved": 1}]):
+        one_arm = [r for r in rows if r["run"] == "a"]
+        disjoint = [{"run": "a", "task": "t", "resolved": 1}, {"run": "b", "task": "u", "resolved": 1}]
+        for bad in (rows + [rows[0]], [{"run": "a", "task": "t", "resolved": None}], one_arm, disjoint):
             with self.assertRaises(SystemExit):
                 resolution.paired(bad, "run", "a", "b", "task", "resolved")
 
